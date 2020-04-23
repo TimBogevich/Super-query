@@ -4,9 +4,11 @@ const express = require('express')
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const app = express()
-const port = 3000
+const port = 4000
 java.options.push("-Xrs")
 java.classpath.pushDir("./drivers")
+var cors = require('cors')
+
 
 connections = {}
 let config = JSON.parse(fs.readFileSync('connections.cfg'));
@@ -38,7 +40,10 @@ function execQuery(connection, query) {
 }
 
 app.use( bodyParser.json() ); 
+app.use(cors());
 app.use(express.json());
+
+
 app.post('/', (req, res) => {
     let connection = connections[req.body.database]
     if(req.body.query.substring(0,6).toLowerCase() == "select") {

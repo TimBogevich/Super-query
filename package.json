@@ -3,33 +3,16 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "java": {
-    "dependencies": [
-      {
-        "groupId": "com.ohadr",
-        "artifactId": "ohadr.commons",
-        "version": "0.3"
-      }
-    ]
-  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "any-db": "^2.2.1",
-    "bluebird": "^3.7.2",
     "body-parser": "^1.19.0",
-    "deasync": "^0.1.19",
+    "cors": "^2.8.5",
     "express": "^4.17.1",
-    "generic-pool": "^3.7.1",
     "java": "^0.12.1",
-    "jdbc": "^0.7.1",
-    "lodash": "^4.17.15",
-    "node-java-maven": "^0.1.1",
-    "nodeunit": "^0.11.3",
-    "promisify": "0.0.3",
-    "sync": "^0.2.5"
+    "jdbc": "^0.7.1"
   }
 }
