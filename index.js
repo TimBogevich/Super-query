@@ -12,13 +12,31 @@ var cors = require('cors')
 
 let cache = apicache.middleware
 
-
 connections = {}
 let config = JSON.parse(fs.readFileSync('connections.cfg'));
 config.forEach(element => {
     let connection = java.callStaticMethodSync("java.sql.DriverManager", "getConnection",element.connectionString, element.user, element.password)
     connections[element.name] = connection
 });
+
+
+function checkConnections() {
+    for (key in connections) {
+        let conn = connections[key]
+        if(!conn.isValidSync(5)) {
+            console.log(`Found wrong connection ${key}`)
+            try {
+                let config = JSON.parse(fs.readFileSync('connections.cfg'));
+                let connElement = config.filter(item => item.name == key)[0]
+                connections[key] = java.callStaticMethodSync("java.sql.DriverManager", "getConnection",connElement.connectionString, connElement.user, connElement.password)
+                console.log(`Connection ${key} was restored`)
+            } catch (error) {
+                console.log(`Couldn't restore connection ${key}. ${error}`)
+            }
+
+        }
+    }  
+}
 
 
 function rsToJson(resultSet) {
@@ -129,4 +147,12 @@ app.get('/connections', (req, res) => {
     res.send(conn)
 })
 
+app.get('/check', (req, res) => {
+    checkConnections()
+    res.send("done")
+})
+
+
 app.listen(port, () => console.log(`Example app listening at http://localhost:${port}`))
+
+setInterval(checkConnections, 5000)
