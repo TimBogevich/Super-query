@@ -158,7 +158,7 @@ app.get('/connections', (req, res) => {
 })
 
 
-app.post("/run", (req, res)  => {
+app.post("/runFile", (req, res)  => {
     try {
         let file = fs.readFileSync(`./store/${req.body.filename}`, "utf8")
         let output = execQuery(req.body.database, file, 0)
@@ -172,6 +172,24 @@ app.post("/run", (req, res)  => {
     }
 })
 
+app.post("/getFiles", (req, res)  => {
+    try {
+        let dir = fs.readdirSync("./store", "utf8")
+        res.send(dir)
+    } catch (error) {
+        res.send(error)
+    }
+})
+
+app.post("/saveFile", (req, res)  => {
+    try {
+        let path = "./store/" + req.body.filename
+        let dir = fs.writeFileSync(path, req.body.data, "utf8")
+        res.sendStatus(200)
+    } catch (error) {
+        res.send(error)
+    }
+})
 
 app.listen(port, () => console.log(`Example app listening at http://localhost:${port}`))
 
