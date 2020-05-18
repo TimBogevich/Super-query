@@ -55,18 +55,33 @@ function rsToJson(resultSet) {
     return js
 }
 
+
 function execQuery(connection, query, limit) {
-    selectStmt = connection.createStatementSync();
-    if(query.trim().substring(0,6).toLowerCase() == "select") {
-        selectStmt.setMaxRowsSync(limit)
-        selectStmt.setFetchSizeSync(limit)
-        resultSet = selectStmt.executeQuerySync(query);
-        return rsToJson(resultSet)
-    }   
-    else{
-        resultSet = selectStmt.executeSync(query);
-        return [{"Query":query,"Result": "SUCCESS"}]
-    }
+    queries = query.split(";")
+    connection = connections[connection]
+    return queries.map(item => {
+        selectStmt = connection.createStatementSync();
+        if(item.trim().substring(0,6).toLowerCase() == "select") {
+            if(limit > 0) {
+                selectStmt.setMaxRowsSync(limit)
+                selectStmt.setFetchSizeSync(limit)
+            }
+            resultSet = selectStmt.executeQuerySync(item);
+            return rsToJson(resultSet)
+        }
+        else if(item.trim() == "") {
+            return
+        }
+        else{
+            try {
+                resultSet = selectStmt.executeSync(item);
+                return [{"Query":item,"Result": "SUCCESS"}]
+            }
+            catch(error) {
+                return [{"Query":item,"Result": error.cause.getMessageSync()}]
+            }
+        }
+    })
 }
 
 app.use( bodyParser.json() ); 
@@ -77,12 +92,7 @@ app.use(express.json());
 app.post('/sql', (req, res) => {
     setTimeout(() => {}, 1000); // to emulate Delay
     try {
-        let connection = connections[req.body.database]
-        let statements = req.body.query.split(";") 
-        let result
-        statements.forEach(statement =>{
-            result = execQuery(connection, req.body.query, parseInt(req.body.limit))
-        })
+        result = execQuery(req.body.database, req.body.query, parseInt(req.body.limit))
         res.send(result)
     } catch (error) {
         res.status(400)
@@ -147,9 +157,19 @@ app.get('/connections', (req, res) => {
     res.send(conn)
 })
 
-app.get('/check', (req, res) => {
-    checkConnections()
-    res.send("done")
+
+app.post("/run", (req, res)  => {
+    try {
+        let file = fs.readFileSync(`./store/${req.body.filename}`, "utf8")
+        let output = execQuery(req.body.database, file, 0)
+        let result = {
+            file,
+            result : output
+        }
+        res.send(result)
+    } catch (error) {
+        res.send(error)
+    }
 })
 
 
