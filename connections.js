@@ -8,7 +8,8 @@ java.classpath.pushDir("./drivers")
 
 
 var connections = []
-let config = JSON.parse(fs.readFileSync('connections.cfg'));
+var config = JSON.parse(fs.readFileSync('connections.cfg'));
+var results = {}
 
 config.forEach(element => {
     conn = connect(element.connectionString, element.user, element.password)
@@ -98,6 +99,19 @@ function rsToJson(resultSet) {
     return js
 }
 
+function testConnection(connConfig) {
+    connection = connect(connConfig.connectionString, connConfig.user, connConfig.password)
+    return connection
+}
+
+function createConnection(connConfig) {
+    connection = connect(connConfig.connectionString, connConfig.user, connConfig.password)
+    connection.name = connConfig.name
+    config.push(connConfig)
+    fs.writeFileSync("./connections.cfg", JSON.stringify(config, null, 4) )
+    connections.push(connection)
+    return connections
+}
 
 function execQuery(connName, query, limit) {
     queries = query.split(";")
@@ -107,7 +121,6 @@ function execQuery(connName, query, limit) {
         if(item.trim().substring(0,6).toLowerCase() == "select") {
             if(limit > 0) {
                 selectStmt.setMaxRowsSync(limit)
-                selectStmt.setFetchSizeSync(limit)
             }
             resultSet = selectStmt.executeQuerySync(item);
             return rsToJson(resultSet)
@@ -127,11 +140,26 @@ function execQuery(connName, query, limit) {
     })
 }
 
-function getMetadata(connName) {
+function metadataCatalog(connName) {
+    let connection = getConnection(connName).connection
+    dbMeta = connection.getMetaDataSync()
+    catalogs = dbMeta.getCatalogsSync();
+    var metadata = []
+    while (catalogs.nextSync()){
+        catalogName = catalogs.getStringSync("TABLE_CAT")
+        metadata.push({
+            objectName: catalogName,
+            objectType : "Database",
+            children : [],
+        })
+    }
+    return metadata
+}
+
+function getMetadataObject(connName, catalog) {
     let connection = getConnection(connName).connection
     dbMeta = connection.getMetaDataSync()
 
-    catalog = null
     schemaPattern = null,
     tableNamePattern = null;
     columnNamePattern = null;
@@ -156,27 +184,20 @@ function getMetadata(connName) {
             objectName : objectName,
             columns : columns
         }
-        var schema = metadata.filter(item => item.objectName === objectSchema)[0]
-        if (schema) {
-            schema.children.push(table)
-        }
-        else {
-            metadata.push({
-                objectName: objectSchema,
-                objectType : "Database",
-                children : [table]
-            })
-        }
-
+        metadata.push(table)
     }
     return metadata
 }
+
 
 module.exports = {
     connections,
     checkConnections,
     execQuery,
-    getMetadata,
     reconnect,
     disconnect,
+    testConnection,
+    createConnection,
+    metadataCatalog,
+    getMetadataObject,
 }

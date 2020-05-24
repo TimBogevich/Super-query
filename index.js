@@ -10,9 +10,12 @@ let cache = apicache.middleware
 var connections = require("./connections").connections
 let checkConnections = require("./connections").checkConnections
 let execQuery = require("./connections").execQuery
-let getMetadata = require("./connections").getMetadata
 let reconnect = require("./connections").reconnect
 let disconnect = require("./connections").disconnect
+let testConnection = require("./connections").testConnection
+let createConnection = require("./connections").createConnection
+let metadataCatalog = require("./connections").metadataCatalog
+let metadataObject = require("./connections").getMetadataObject
 
 app.use( bodyParser.json()); 
 app.use(cors());
@@ -30,10 +33,17 @@ app.post('/sql', (req, res) => {
     }
 })
 
-app.post('/metadata', cache('20 minutes'), (req, res) => {
-    metadata = getMetadata(req.body.database)
+
+app.post('/metadataCatalog',  (req, res) => {
+    metadata = metadataCatalog(req.body.database)
     res.send(metadata)
 })
+
+app.post('/metadataObject',  (req, res) => {
+    metadata = metadataObject(req.body.database, req.body.catalog)
+    res.send(metadata)
+})
+
 
 app.get('/', (req, res) => {
     res.send('Use POST request. Query example {"query" : "select 1" }')
@@ -50,6 +60,16 @@ app.get('/connections/reconnect/:connection', (req, res) => {
 
 app.get('/connections/disconnect/:connection', (req, res) => {
     connections = disconnect(req.params.connection)
+    res.send("success")
+})
+
+app.post('/connections/testConnection', (req, res) => {
+    result = testConnection(req.body)
+    res.send(result)
+})
+
+app.post('/connections/createConnection', (req, res) => {
+    connections = createConnection(req.body)
     res.send("success")
 })
 
