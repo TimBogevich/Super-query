@@ -5,6 +5,7 @@ const bodyParser = require('body-parser');
 const fs = require('fs');
 java.options.push("-Xrs")
 java.classpath.pushDir("./drivers")
+uuidv4 = require("uuid").v4
 
 
 var connections = []
@@ -114,19 +115,12 @@ function createConnection(connConfig) {
 }
 
 function execQuery(connName, query, limit) {
-    queries = query.split(";")
+    queries = query.split(";").filter(item => item.trim() != "")
     connection = getConnection(connName).connection
     return queries.map(item => {
         selectStmt = connection.createStatementSync();
         if(item.trim().substring(0,6).toLowerCase() == "select") {
-            if(limit > 0) {
-                selectStmt.setMaxRowsSync(limit)
-            }
-            resultSet = selectStmt.executeQuerySync(item);
-            return rsToJson(resultSet)
-        }
-        else if(item.trim() == "") {
-            return
+            return execSelect(connName,item,limit)
         }
         else{
             try {
@@ -189,6 +183,36 @@ function getMetadataObject(connName, catalog) {
     return metadata
 }
 
+function execSelect(connName, query, limit, resultId) {
+    if (!results[resultId]) {
+        uid = uuidv4()
+        connection = getConnection(connName).connection
+        selectStmt = connection.createStatementSync();
+        resultSet = selectStmt.executeQuerySync(query);
+        results[uid] = resultSet
+        results.dateOfCreation = new Date
+    }
+    else {
+        resultSet = results[resultId]
+    }
+    var total_columns = resultSet.getMetaDataSync().getColumnCountSync();
+    js = []
+    for (let index = 0; index <= limit; index++) {
+        if (!resultSet.nextSync()) {
+            break
+        }
+        var row = {}
+        for (i = 1; i <= total_columns; i++) {
+            key = resultSet.getMetaDataSync().getColumnLabelSync(i)
+            value = resultSet.getStringSync(i)
+            row[key] = value
+        }
+        js.push(row)
+    }
+    return {connection : connName, query : query, resultId : uid, data : js}
+}
+
+
 
 module.exports = {
     connections,
@@ -200,4 +224,5 @@ module.exports = {
     createConnection,
     metadataCatalog,
     getMetadataObject,
+    execSelect,
 }

@@ -16,6 +16,7 @@ let testConnection = require("./connections").testConnection
 let createConnection = require("./connections").createConnection
 let metadataCatalog = require("./connections").metadataCatalog
 let metadataObject = require("./connections").getMetadataObject
+let execSelect = require("./connections").execSelect
 
 app.use( bodyParser.json()); 
 app.use(cors());
@@ -26,6 +27,17 @@ app.post('/sql', (req, res) => {
     setTimeout(() => {}, 1000); // to emulate Delay
     try {
         result = execQuery(req.body.database, req.body.query, parseInt(req.body.limit))
+        res.send(result)
+    } catch (error) {
+        res.status(400)
+        res.send(error.message)
+    }
+})
+
+app.post('/sqlScroll', (req, res) => {
+    setTimeout(() => {}, 1000); // to emulate Delay
+    try {
+        result = execSelect(req.body.database, req.body.query, parseInt(req.body.limit), req.body.resultId)
         res.send(result)
     } catch (error) {
         res.status(400)

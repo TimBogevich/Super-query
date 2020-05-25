@@ -16,6 +16,7 @@
     "java": "^0.12.1",
     "jdbc": "^0.7.1",
     "pouchdb": "^7.2.1",
-    "pouchdb-adapter-cordova-sqlite": "^2.0.7"
+    "pouchdb-adapter-cordova-sqlite": "^2.0.7",
+    "uuid": "^8.1.0"
   }
 }
