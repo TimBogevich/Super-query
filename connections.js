@@ -7,7 +7,7 @@ java.options.push("-Xrs")
 java.classpath.pushDir("./drivers")
 uuidv4 = require("uuid").v4
 
-
+console.log(java.classpath)
 var connections = []
 var config = JSON.parse(fs.readFileSync('connections.cfg'));
 var results = {}

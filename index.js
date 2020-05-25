@@ -5,7 +5,6 @@ const app = express()
 const port = 4000
 const apicache = require('apicache')
 var cors = require('cors')
-let cache = apicache.middleware
 
 var connections = require("./connections").connections
 let checkConnections = require("./connections").checkConnections
