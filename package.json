@@ -12,6 +12,7 @@
     "body-parser": "^1.19.0",
     "cordova-sqlite-storage": "^5.0.0",
     "cors": "^2.8.5",
+    "directory-tree": "^2.2.4",
     "express": "^4.17.1",
     "java": "^0.12.1",
     "jdbc": "^0.7.1",

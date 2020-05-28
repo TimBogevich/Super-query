@@ -134,6 +134,12 @@ function execQuery(connName, query, limit) {
     })
 }
 
+function setDefaultCatalog(connName, catalog) {
+    let connection = getConnection(connName).connection
+    connection.setCatalogSync(catalog)
+}
+
+
 function metadataCatalog(connName) {
     let connection = getConnection(connName).connection
     dbMeta = connection.getMetaDataSync()
@@ -150,6 +156,7 @@ function metadataCatalog(connName) {
     return metadata
 }
 
+
 function getMetadataObject(connName, catalog) {
     let connection = getConnection(connName).connection
     dbMeta = connection.getMetaDataSync()
@@ -162,8 +169,9 @@ function getMetadataObject(connName, catalog) {
 
     var metadata = []
     while (rsTables.nextSync()) {
-        objectName = rsTables.getStringSync(3);
-        objectSchema = rsTables.getStringSync(1),
+        objectName = rsTables.getStringSync(3)
+        objectSchema = rsTables.getStringSync(1)
+        objectType = rsTables.getStringSync(4)
         rsColumns = dbMeta.getColumnsSync(catalog, schemaPattern, objectName, columnNamePattern);
         columns = []
         while (rsColumns.nextSync()) {
@@ -173,14 +181,60 @@ function getMetadataObject(connName, catalog) {
             column.columnSize = rsColumns.getIntSync("COLUMN_SIZE");
             columns.push(column)
         }
-        table = {
-            objectType : rsTables.getStringSync(4),
-            objectName : objectName,
-            columns : columns
+        metadataType = metadata.filter(item => item.objectType == objectType)
+        if (metadataType.length == 0) {
+            metadata.push({
+                objectType,
+                objectName: objectType,
+                children : [{objectType,objectName,columns}]
+            })
         }
-        metadata.push(table)
+        else {
+            metadataType[0].children.push({objectType,objectName,columns})
+        }
     }
     return metadata
+}
+
+
+
+function execSelect_new(connName, query, limit, resultId) {
+    if (!results[resultId]) {
+        uid = uuidv4()
+        connection = getConnection(connName).connection
+        selectStmt = connection.createStatementSync();
+        resultSet = selectStmt.executeQuerySync(query);
+        results[uid] = {
+            resultSet,
+            dateOfCreation : new Date
+        }
+    }
+    else {
+        resultSet = results[resultId].resultSet
+    }
+    var fields = resultSet.getMetaDataSync().getClassSync().getFieldsSync()
+    js = []
+    for (let rowNum = 0; rowNum <= limit; rowNum++) {
+        var row = {}
+        var value = ""
+        if (!resultSet.nextSync() & rowNum != 0) {
+            break
+        }
+
+        fields.forEach((col,index) => {
+            var key = col.getNameSync()
+            try {
+                value = resultSet.getStringSync(index)
+            } catch (error) {
+                value = ""
+            }
+            row[key] = value
+        })
+       
+
+        js.push(row)
+    }
+    return {connection : connName, query : query, resultId : uid, data : js}
 }
 
 function execSelect(connName, query, limit, resultId) {
@@ -189,30 +243,39 @@ function execSelect(connName, query, limit, resultId) {
         connection = getConnection(connName).connection
         selectStmt = connection.createStatementSync();
         resultSet = selectStmt.executeQuerySync(query);
-        results[uid] = resultSet
-        results.dateOfCreation = new Date
+        results[uid] = {
+            resultSet,
+            dateOfCreation : new Date
+        }
     }
     else {
-        resultSet = results[resultId]
+        resultSet = results[resultId].resultSet
     }
     var total_columns = resultSet.getMetaDataSync().getColumnCountSync();
     js = []
-    for (let index = 0; index <= limit; index++) {
-        if (!resultSet.nextSync()) {
+    for (let rowNum = 0; rowNum <= limit; rowNum++) {
+        var row = {}
+        next = resultSet.nextSync()
+        if (!next & rowNum != 0) {
             break
         }
-        var row = {}
+
         for (i = 1; i <= total_columns; i++) {
             key = resultSet.getMetaDataSync().getColumnLabelSync(i)
-            value = resultSet.getStringSync(i)
+            if (next) {
+                var value = resultSet.getStringSync(i)
+            }
+            else {
+                var value = ""
+            }
             row[key] = value
         }
+        
+
         js.push(row)
     }
     return {connection : connName, query : query, resultId : uid, data : js}
 }
-
-
 
 module.exports = {
     connections,
@@ -225,4 +288,5 @@ module.exports = {
     metadataCatalog,
     getMetadataObject,
     execSelect,
+    setDefaultCatalog,
 }

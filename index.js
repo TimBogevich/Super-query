@@ -16,14 +16,14 @@ let createConnection = require("./connections").createConnection
 let metadataCatalog = require("./connections").metadataCatalog
 let metadataObject = require("./connections").getMetadataObject
 let execSelect = require("./connections").execSelect
+let setDefaultCatalog = require("./connections").setDefaultCatalog
 
 app.use( bodyParser.json()); 
 app.use(cors());
 app.use(express.json());
-
+require('./fileManager')(app);
 
 app.post('/sql', (req, res) => {
-    setTimeout(() => {}, 1000); // to emulate Delay
     try {
         result = execQuery(req.body.database, req.body.query, parseInt(req.body.limit))
         res.send(result)
@@ -34,7 +34,6 @@ app.post('/sql', (req, res) => {
 })
 
 app.post('/sqlScroll', (req, res) => {
-    setTimeout(() => {}, 1000); // to emulate Delay
     try {
         result = execSelect(req.body.database, req.body.query, parseInt(req.body.limit), req.body.resultId)
         res.send(result)
@@ -44,6 +43,15 @@ app.post('/sqlScroll', (req, res) => {
     }
 })
 
+app.post('/setDefaultCatalog',  (req, res) => {
+    metadata = setDefaultCatalog(req.body.database, req.body.catalog)
+    res.sendStatus(200)
+})
+
+app.post('/metadataCatalog',  (req, res) => {
+    metadata = metadataCatalog(req.body.database)
+    res.send(metadata)
+})
 
 app.post('/metadataCatalog',  (req, res) => {
     metadata = metadataCatalog(req.body.database)
@@ -85,37 +93,6 @@ app.post('/connections/createConnection', (req, res) => {
 })
 
 
-app.post("/runFile", (req, res)  => {
-    try {
-        let file = fs.readFileSync(`./store/${req.body.filename}`, "utf8")
-        let output = execQuery(req.body.database, file, 0)
-        let result = {
-            file,
-            result : output
-        }
-        res.send(result)
-    } catch (error) {
-        res.send(error)
-    }
-})
-
-app.post("/getFiles", (req, res)  => {
-    try {
-        res.send(fs.readdirSync("./store", "utf8"))
-    } catch (error) {
-        res.send(error)
-    }
-})
-
-app.post("/saveFile", (req, res)  => {
-    try {
-        let path = "./store/" + req.body.filename
-        let dir = fs.writeFileSync(path, req.body.data, "utf8")
-        res.sendStatus(200)
-    } catch (error) {
-        res.send(error)
-    }
-})
 
 app.listen(port, () => console.log(`Example app listening at http://localhost:${port}`))
 

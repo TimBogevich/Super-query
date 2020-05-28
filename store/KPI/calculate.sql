@@ -1,0 +1,1 @@
+insert into table test values(1)
