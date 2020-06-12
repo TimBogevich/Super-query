@@ -15,7 +15,7 @@ let testConnection = require("./connections").testConnection
 let createConnection = require("./connections").createConnection
 let metadataCatalog = require("./connections").metadataCatalog
 let metadataObject = require("./connections").getMetadataObject
-let execSelect = require("./connections").execSelect
+let ProcessResultSet = require("./connections").ProcessResultSet
 let setDefaultCatalog = require("./connections").setDefaultCatalog
 
 app.use( bodyParser.json()); 
@@ -35,7 +35,7 @@ app.post('/sql', (req, res) => {
 
 app.post('/sqlScroll', (req, res) => {
     try {
-        result = execSelect(req.body.database, req.body.query, parseInt(req.body.limit), req.body.resultId)
+        result = ProcessResultSet(null, null, parseInt(req.body.limit), null, req.body.resultId)
         res.send(result)
     } catch (error) {
         res.status(400)

@@ -115,6 +115,23 @@ function createConnection(connConfig) {
 }
 
 function execQuery(connName, query, limit) {
+  queries = query.split(";").filter(item => item.trim() != "")
+  connection = getConnection(connName).connection
+  return queries.map(query => {
+      stmt = connection.createStatementSync();
+      hasResultSet = stmt.executeSync(query)
+      if(hasResultSet) {
+        resultSet = stmt.getResultSetSync()
+        return ProcessResultSet(resultSet,connName, limit, query, null)
+      }
+      else {
+        rowsAffected = stmt.getUpdateCountSync()  
+        return {query, "result": "SUCCESS", queryType : "command"}
+      }
+  })
+}
+
+function execQueryOld(connName, query, limit) {
     queries = query.split(";").filter(item => item.trim() != "")
     connection = getConnection(connName).connection
     return queries.map(item => {
@@ -125,10 +142,10 @@ function execQuery(connName, query, limit) {
         else{
             try {
                 resultSet = selectStmt.executeSync(item);
-                return [{"Query":item,"Result": "SUCCESS"}]
+                return {"query":item,"result": "SUCCESS", queryType : "command"}
             }
             catch(error) {
-                return [{"Query":item,"Result": error.cause.getMessageSync()}]
+                return {"query":item,"result": error.cause.getMessageSync(), queryType : "command"}
             }
         }
     })
@@ -150,7 +167,9 @@ function metadataCatalog(connName) {
         metadata.push({
             objectName: catalogName,
             objectType : "Database",
+            menuType : "Catalog",
             children : [],
+            uid : uuidv4(),
         })
     }
     return metadata
@@ -182,100 +201,69 @@ function getMetadataObject(connName, catalog) {
             columns.push(column)
         }
         metadataType = metadata.filter(item => item.objectType == objectType)
+        let children = {objectType,objectName,columns, catalog, menuType:"selectable", uid:uuidv4()}
         if (metadataType.length == 0) {
             metadata.push({
-                objectType,
+                objectType : objectType,
                 objectName: objectType,
-                children : [{objectType,objectName,columns}]
+                uid : uuidv4(),
+                children : [children]
             })
         }
         else {
-            metadataType[0].children.push({objectType,objectName,columns})
+            metadataType[0].children.push(children)
         }
     }
     return metadata
 }
 
+function ProcessResultSet(resultSet, connName, limit, query, resultId) {
+  if (!results[resultId]) {
+      uid = uuidv4()
+      results[uid] = {
+        query,
+        connName,
+        resultSet,
+        dateOfCreation : new Date
+      }
+  }
+  else {
+      resultSet = results[resultId].resultSet
+      connName = results[resultId].connName
+      query = results[resultId].query
+  }
+  var total_columns = resultSet.getMetaDataSync().getColumnCountSync();
+  js = []
+  for (let rowNum = 0; rowNum <= limit; rowNum++) {
+      var row = {}
+      next = resultSet.nextSync()
+      if (!next & rowNum != 0) {
+          break
+      }
 
+      for (i = 1; i <= total_columns; i++) {
+          key = resultSet.getMetaDataSync().getColumnLabelSync(i)
+          if (next) {
+              var value = resultSet.getStringSync(i)
+          }
+          else {
+              var value = ""
+          }
+          row[key] = value
+      }
+      
 
-function execSelect_new(connName, query, limit, resultId) {
-    if (!results[resultId]) {
-        uid = uuidv4()
-        connection = getConnection(connName).connection
-        selectStmt = connection.createStatementSync();
-        resultSet = selectStmt.executeQuerySync(query);
-        results[uid] = {
-            resultSet,
-            dateOfCreation : new Date
-        }
-    }
-    else {
-        resultSet = results[resultId].resultSet
-    }
-    var fields = resultSet.getMetaDataSync().getClassSync().getFieldsSync()
-    js = []
-    for (let rowNum = 0; rowNum <= limit; rowNum++) {
-        var row = {}
-        var value = ""
-        if (!resultSet.nextSync() & rowNum != 0) {
-            break
-        }
-
-        fields.forEach((col,index) => {
-            var key = col.getNameSync()
-            try {
-                value = resultSet.getStringSync(index)
-            } catch (error) {
-                value = ""
-            }
-            row[key] = value
-        })
-       
-
-        js.push(row)
-    }
-    return {connection : connName, query : query, resultId : uid, data : js}
+      js.push(row)
+  }
+  return {
+    connection : connName, 
+    query : query, 
+    resultId : uid, 
+    data : js, 
+    queryType : "query"
+  }
 }
 
-function execSelect(connName, query, limit, resultId) {
-    if (!results[resultId]) {
-        uid = uuidv4()
-        connection = getConnection(connName).connection
-        selectStmt = connection.createStatementSync();
-        resultSet = selectStmt.executeQuerySync(query);
-        results[uid] = {
-            resultSet,
-            dateOfCreation : new Date
-        }
-    }
-    else {
-        resultSet = results[resultId].resultSet
-    }
-    var total_columns = resultSet.getMetaDataSync().getColumnCountSync();
-    js = []
-    for (let rowNum = 0; rowNum <= limit; rowNum++) {
-        var row = {}
-        next = resultSet.nextSync()
-        if (!next & rowNum != 0) {
-            break
-        }
-
-        for (i = 1; i <= total_columns; i++) {
-            key = resultSet.getMetaDataSync().getColumnLabelSync(i)
-            if (next) {
-                var value = resultSet.getStringSync(i)
-            }
-            else {
-                var value = ""
-            }
-            row[key] = value
-        }
-        
-
-        js.push(row)
-    }
-    return {connection : connName, query : query, resultId : uid, data : js}
-}
 
 module.exports = {
     connections,
@@ -287,6 +275,6 @@ module.exports = {
     createConnection,
     metadataCatalog,
     getMetadataObject,
-    execSelect,
+    ProcessResultSet,
     setDefaultCatalog,
 }

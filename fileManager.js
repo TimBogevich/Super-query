@@ -49,5 +49,19 @@ module.exports = function(app){
             res.send(error)
         }
     })
+
+    app.post("/deleteFile", (req, res)  => {
+      try {
+        let query = fs.unlinkSync(req.body.path)
+        let result = {
+            query,
+            filename : req.body.name
+        }
+        res.send(result)
+      } catch (error) {
+          res.send(error)
+      }
+  })
+
     
 }
