@@ -25,7 +25,7 @@ require('./fileManager')(app);
 
 app.post('/sql', (req, res) => {
     try {
-        result = execQuery(req.body.database, req.body.query, parseInt(req.body.limit))
+        result = execQuery(req.body.database, req.body.query, parseInt(req.body.limit), parseInt(req.body.batchSize))
         res.send(result)
     } catch (error) {
         res.status(400)
@@ -35,7 +35,7 @@ app.post('/sql', (req, res) => {
 
 app.post('/sqlScroll', (req, res) => {
     try {
-        result = ProcessResultSet(null, null, parseInt(req.body.limit), null, req.body.resultId)
+        result = ProcessResultSet(null, null, parseInt(req.body.batchSize), null, req.body.resultId)
         res.send(result)
     } catch (error) {
         res.status(400)

@@ -7,7 +7,6 @@ java.options.push("-Xrs")
 java.classpath.pushDir("./drivers")
 uuidv4 = require("uuid").v4
 
-console.log(java.classpath)
 var connections = []
 var config = JSON.parse(fs.readFileSync('connections.cfg'));
 var results = {}
@@ -114,42 +113,28 @@ function createConnection(connConfig) {
     return connections
 }
 
-function execQuery(connName, query, limit) {
+function execQuery(connName, query, limit, batchSize) {
   queries = query.split(";").filter(item => item.trim() != "")
   connection = getConnection(connName).connection
   return queries.map(query => {
+    try {
       stmt = connection.createStatementSync();
+      stmt.setMaxRowsSync(limit)
       hasResultSet = stmt.executeSync(query)
       if(hasResultSet) {
         resultSet = stmt.getResultSetSync()
-        return ProcessResultSet(resultSet,connName, limit, query, null)
+        return ProcessResultSet(resultSet,connName, batchSize, query, null)
       }
       else {
         rowsAffected = stmt.getUpdateCountSync()  
         return {query, "result": "SUCCESS", queryType : "command"}
       }
+    } catch (error) {
+      return {query,"result": error.cause.getMessageSync()}
+    }
   })
 }
 
-function execQueryOld(connName, query, limit) {
-    queries = query.split(";").filter(item => item.trim() != "")
-    connection = getConnection(connName).connection
-    return queries.map(item => {
-        selectStmt = connection.createStatementSync();
-        if(item.trim().substring(0,6).toLowerCase() == "select") {
-            return execSelect(connName,item,limit)
-        }
-        else{
-            try {
-                resultSet = selectStmt.executeSync(item);
-                return {"query":item,"result": "SUCCESS", queryType : "command"}
-            }
-            catch(error) {
-                return {"query":item,"result": error.cause.getMessageSync(), queryType : "command"}
-            }
-        }
-    })
-}
 
 function setDefaultCatalog(connName, catalog) {
     let connection = getConnection(connName).connection
@@ -217,7 +202,7 @@ function getMetadataObject(connName, catalog) {
     return metadata
 }
 
-function ProcessResultSet(resultSet, connName, limit, query, resultId) {
+function ProcessResultSet(resultSet, connName, batchSize, query, resultId) {
   if (!results[resultId]) {
       uid = uuidv4()
       results[uid] = {
@@ -234,7 +219,7 @@ function ProcessResultSet(resultSet, connName, limit, query, resultId) {
   }
   var total_columns = resultSet.getMetaDataSync().getColumnCountSync();
   js = []
-  for (let rowNum = 0; rowNum <= limit; rowNum++) {
+  for (let rowNum = 0; rowNum <= batchSize; rowNum++) {
       var row = {}
       next = resultSet.nextSync()
       if (!next & rowNum != 0) {
@@ -251,6 +236,7 @@ function ProcessResultSet(resultSet, connName, limit, query, resultId) {
           }
           row[key] = value
       }
+      row.serviceRowNumber = resultSet.getRowSync()
       
 
       js.push(row)
