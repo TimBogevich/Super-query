@@ -68,14 +68,14 @@ function checkConnections() {
         let conn = connections[key].connection
         let connName = connections[key].name
         if(!conn.isValidSync(5)) {
-            console.log(`Found wrong connection ${key}`)
+            console.log(`Found wrong connection ${connections[key].name}`)
             try {
                 let config = JSON.parse(fs.readFileSync('connections.cfg'));
                 let connElement = config.filter(item => item.name == connName)[0]
                 connections[key].connection = java.callStaticMethodSync("java.sql.DriverManager", "getConnection",connElement.connectionString, connElement.user, connElement.password)
-                console.log(`Connection ${key} was restored`)
+                console.log(`Connection ${connections[key].name} was restored`)
             } catch (error) {
-                console.log(`Couldn't restore connection ${key}. ${error}`)
+                console.log(`Couldn't restore connection ${connections[key].name}. ${error}`)
             }
 
         }
@@ -219,9 +219,13 @@ function ProcessResultSet(resultSet, connName, batchSize, query, resultId) {
   }
   var total_columns = resultSet.getMetaDataSync().getColumnCountSync();
   js = []
+  var endCursor = false
   for (let rowNum = 0; rowNum <= batchSize; rowNum++) {
       var row = {}
       next = resultSet.nextSync()
+      if (!next) {
+        endCursor = true
+      }
       if (!next & rowNum != 0) {
           break
       }
@@ -246,7 +250,8 @@ function ProcessResultSet(resultSet, connName, batchSize, query, resultId) {
     query : query, 
     resultId : uid, 
     data : js, 
-    queryType : "query"
+    queryType : "query",
+    endCursor,
   }
 }
 
