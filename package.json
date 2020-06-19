@@ -16,6 +16,10 @@
     "express": "^4.17.1",
     "java": "^0.12.1",
     "jdbc": "^0.7.1",
+    "mongo-sync": "^2.0.1",
+    "mongodb": "^3.5.9",
+    "mongoose": "^5.9.19",
+    "monk": "^7.3.0",
     "pouchdb": "^7.2.1",
     "pouchdb-adapter-cordova-sqlite": "^2.0.7",
     "uuid": "^8.1.0"

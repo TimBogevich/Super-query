@@ -170,8 +170,28 @@ function getMetadataObject(connName, catalog) {
     columnNamePattern = null;
     types = null
     rsTables = dbMeta.getTablesSync(catalog, schemaPattern, tableNamePattern, types);
+    rsProcedures = dbMeta.getProceduresSync(catalog, schemaPattern, null); 
+    rsProceduresColumns = dbMeta.getProcedureColumnsSync(catalog,null, null,null)
 
     var metadata = []
+    while (rsProcedures.nextSync()) {
+      objectName = rsProcedures.getStringSync("PROCEDURE_NAME")
+      objectSchema = rsProcedures.getStringSync("PROCEDURE_SCHEM")
+      objectType = "PROCEDURE"
+      metadataType = metadata.filter(item => item.objectType == objectType)
+      let children = {objectType,objectName, catalog, menuType:"procedure", uid:uuidv4()}
+      if (metadataType.length == 0) {
+          metadata.push({
+              objectType : objectType,
+              objectName: objectType,
+              uid : uuidv4(),
+              children : [children]
+          })
+      }
+      else {
+        metadataType[0].children.push(children)
+    }
+    }
     while (rsTables.nextSync()) {
         objectName = rsTables.getStringSync(3)
         objectSchema = rsTables.getStringSync(1)
