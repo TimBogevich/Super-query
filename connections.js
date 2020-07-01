@@ -279,6 +279,7 @@ function ProcessResultSet(resultSet, connName, batchSize, query, resultId) {
 module.exports = {
     connections,
     checkConnections,
+    getConnection,
     execQuery,
     reconnect,
     disconnect,

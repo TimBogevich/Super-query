@@ -18,10 +18,12 @@ let metadataObject = require("./connections").getMetadataObject
 let ProcessResultSet = require("./connections").ProcessResultSet
 let setDefaultCatalog = require("./connections").setDefaultCatalog
 
+
 app.use( bodyParser.json()); 
 app.use(cors());
 app.use(express.json());
 require('./fileManager')(app);
+require('./jobRunner')(app);
 
 app.post('/sql', (req, res) => {
     try {
@@ -91,6 +93,7 @@ app.post('/connections/createConnection', (req, res) => {
     connections = createConnection(req.body)
     res.send("success")
 })
+
 
 
 
