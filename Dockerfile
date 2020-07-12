@@ -17,5 +17,5 @@ WORKDIR Super-query
 RUN npm i
 COPY connections.cfg .
 
-EXPOSE 4000
+EXPOSE 4000 8000
 CMD [ "node", "index.js" ]
