@@ -1,5 +1,5 @@
-var {jobUnschedule, jobSchedule} = require("./jobRunnerFunctions")
-const {Jobs, JobsHistory} = require("./metadataDb")
+var {jobUnschedule, jobSchedule, jobRun} = require("./jobRunnerFunctions")
+const {Jobs, JobsHistory, JobsFolders} = require("./metadataDb")
 
 module.exports = function(app){
 
@@ -9,6 +9,19 @@ module.exports = function(app){
         model: JobsHistory,
         order : [['start_dt', 'DESC']] ,
         limit : 50,
+      }
+    }))
+  })
+
+  app.get('/jobfolders',async (req, res) => {
+    res.send(await JobsFolders.findAll({
+      include : {
+        model: Jobs,
+        include : {
+          model: JobsHistory,
+          order : [['start_dt', 'DESC']] ,
+          limit : 50,
+        }
       }
     }))
   })
@@ -29,6 +42,9 @@ module.exports = function(app){
     }
     else if(operation === "unschedule") {
       await jobUnschedule(req.params.jobid)
+    }
+    else if(operation === "run") {
+      await jobRun(req.params.jobid)
     }
     res.send(await Jobs.findAll())
   })    

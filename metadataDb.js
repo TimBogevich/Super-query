@@ -1,5 +1,9 @@
 const Sequelize = require('sequelize');
+require('sequelize-hierarchy')(Sequelize);
+uuidv4 = require("uuid").v4
+
 var deasync = require('deasync');
+const { text } = require('body-parser');
 
 
 const sequelize = new Sequelize(
@@ -17,20 +21,28 @@ const sequelize = new Sequelize(
 
 const Jobs = sequelize.define('jobs', {
   jobid: { type: Sequelize.INTEGER, autoIncrement: true, primaryKey: true},
-  jobname : Sequelize.STRING,
+  name : Sequelize.STRING,
   pattern : Sequelize.STRING,
   createdt : Sequelize.DATE,
   command : Sequelize.STRING,
   descr : Sequelize.STRING,
   status : Sequelize.STRING,
+  folderId : Sequelize.INTEGER,
+  uid: {
+    type: new Sequelize.VIRTUAL,
+    get: () => uuidv4()
+  }
 });
 
-const JobsTree = sequelize.define('jobs', {
-  treeId: { type: Sequelize.INTEGER, autoIncrement: true, primaryKey: true},
-  def : {type: Sequelize.HSTORE},
+const JobsFolders = sequelize.define('jobsfolders', {
+  folderId : { type: Sequelize.INTEGER, autoIncrement: true, primaryKey: true},
+  name : Sequelize.STRING,
+  uid: {
+    type: new Sequelize.VIRTUAL,
+    get: () => uuidv4()
+  }
 });
-
-
+JobsFolders.isHierarchy()
 
 const JobsHistory = sequelize.define('jobshistory', {
     jobid: Sequelize.INTEGER,
@@ -48,29 +60,40 @@ const JobsHistory = sequelize.define('jobshistory', {
   ]
 }
 );
+JobsFolders.hasMany(Jobs, {foreignKey: 'folderId' })
+Jobs.belongsTo(JobsFolders, { foreignKey: 'folderId' })
 
 Jobs.hasMany(JobsHistory, { foreignKey: 'jobid' })
 JobsHistory.belongsTo(Jobs, { foreignKey: 'jobid' })
 
-const seqsync = sequelize.sync({force : true}).then(() => {
+const seqsync = sequelize.sync({force : true})
+.then(async () => {
+  await JobsFolders.bulkCreate([
+    {
+      folderId : 1,
+      name : "test"
+    }
+  ])
   Jobs.bulkCreate([
     {
       jobid : 1,
-      jobname : "Text job 1",
-      pattern : "* * * * * *",
+      name : "Text job 1",
+      pattern : "* * * * *",
       createdt : new Date,
-      command : "test",
+      command : "exec pg_run.sql Postgres",
       descr : "just test job",
-      status : "N/A",
+      status : "unscheduled",
+      folderId : 1,
     },
     {
       jobid : 2,
-      jobname : "Text job 2",
-      pattern : "* * * * * *",
+      name : "Text job 2",
+      pattern : "* * * * *",
       createdt : new Date,
-      command : "exec test.txt MySQL",
+      command : "exec pg_run.sql Postgres",
       descr : "just test job",
-      status : "N/A",
+      status : "unscheduled",
+      folderId : 1,
     },
   ])
 })
@@ -84,5 +107,6 @@ module.exports = {
   Jobs,
   JobsHistory,
   sequelize,
+  JobsFolders,
 }
 
