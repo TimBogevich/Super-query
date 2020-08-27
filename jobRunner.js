@@ -1,10 +1,12 @@
-var {jobUnschedule, jobSchedule, jobRun} = require("./jobRunnerFunctions")
+var {jobRun, jobEdit, jobCreate} = require("./jobRunnerFunctions")
 const {Jobs, JobsHistory, JobsFolders} = require("./metadataDb")
+const { concat } = require("pouchdb-adapter-cordova-sqlite")
 
 module.exports = function(app){
 
   app.get('/jobs',async (req, res) => {
     res.send(await Jobs.findAll({
+      order : [['jobid']],
       include : {
         model: JobsHistory,
         order : [['start_dt', 'DESC']] ,
@@ -35,17 +37,23 @@ module.exports = function(app){
   })
 
 
-  app.post('/jobs/:jobid', async (req, res) => {
+  app.post('/jobs/run/:jobid', async (req, res) => {
     let operation = req.body.operation
-    if(operation === "schedule") {
-      await jobSchedule(req.params.jobid)
-    }
-    else if(operation === "unschedule") {
-      await jobUnschedule(req.params.jobid)
-    }
-    else if(operation === "run") {
+    if(operation === "run") {
       await jobRun(req.params.jobid)
     }
     res.send(await Jobs.findAll())
   })    
+
+
+  app.post('/jobs/edit', async (req, res) => {
+     res.send(await jobEdit(req.body.job))
+  })
+
+  app.post('/jobs/create', async (req, res) => {
+     res.send(await jobCreate(req.body.job))
+  })
+
+
+
 }

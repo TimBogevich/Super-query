@@ -73,6 +73,8 @@ function execHistoriser(jobid, command) {
 }
 
 async function initAllJobs() {
+  cronJobs.forEach(j => j.job.destroy())
+  cronJobs = []
   const allJobs = await Jobs.findAll()
   allJobs.forEach(jobDesc => {
     if(jobDesc.status !== "unscheduled") {
@@ -84,34 +86,26 @@ async function initAllJobs() {
   })
 }
 
-async function jobUnschedule(jobid) {
-  let job = cronJobs.find(cj => cj.jobid == jobid)
-  if(job) {
-    job.job.stop()
-    cronJobs.splice(cronJobs[job],1)
-    let jobDesc = await Jobs.findOne({where: {jobid}})
-    jobDesc.status = "unscheduled"
-    await jobDesc.save()
 
-  }
+async function jobEdit(jobEdited) {
+  let jobEditedInst = await Jobs.build(jobEdited)
+  jobEditedInst.isNewRecord = false
+  const save = await jobEditedInst.save()
+  await initAllJobs()
+  return save
 }
 
-async function jobSchedule(jobid) {
-  let jobDesc = await Jobs.findOne({where: {jobid}})
-  let crJob = cronJobs.find(cj => cj.jobid == jobid)
-  if(jobDesc.status === "unscheduled" && !crJob) {
-    let job =  cron.schedule(jobDesc.pattern, () => execHistoriser(jobDesc.jobid, jobDesc.command) )
-    cronJobs.push({jobid : jobDesc.jobid, job})
-    jobDesc.status = job.status
-    await jobDesc.save()
-  }
+async function jobCreate(jobCreated) {
+  const job = Jobs.create(jobCreated)
+  initAllJobs()
+  return job
 }
 
 initAllJobs()
 
 module.exports = {
-  jobUnschedule,
-  jobSchedule,
   jobRun,
+  jobEdit,
+  jobCreate,
 }
 

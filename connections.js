@@ -6,33 +6,47 @@ const fs = require('fs');
 java.options.push("-Xrs")
 java.classpath.pushDir("./drivers")
 uuidv4 = require("uuid").v4
+const {Connections} = require('./metadataDb')
+const Sequelize = require('sequelize');
+const Op = Sequelize.Op;
 
 var connections = []
-var config = JSON.parse(fs.readFileSync('connections.cfg'));
 var results = {}
 
-config.forEach(element => {
-    conn = connect(element.connectionString, element.user, element.password)
-    conn.name = element.name
-    connections.push(conn) 
-});
-
-function connect(connectionString,user,password) {
-    let connection = java.callStaticMethodSync("java.sql.DriverManager", "getConnection",connectionString, user, password)
-    conn = {
-        connectionString : connectionString,
-        connection : connection,
-        status : "OK",
-        lastConnectDate : new Date(),
-        disconnectedManually : false,
+async function initConnections() {
+  connections = []
+  const connDefenitions = await Connections.findAll(  {
+    where : {
+      status: {
+        [Op.or]: {
+          [Op.eq]: "OK",
+          [Op.eq]: null
+        }
+      },
     }
-    return conn
+  })
+  connDefenitions.forEach(conn => {
+    let connection = connect(conn)
+    conn.status = "OK"
+    conn.lastConnectDate = new Date()
+    conn.disconnectedManually = false
+    conn.connection = connection
+    conn.save({})
+    connections.push(conn) 
+  })
+}
+initConnections() 
+
+
+function connect(conn) {
+  return java.callStaticMethodSync("java.sql.DriverManager", "getConnection",conn.connectionString, conn.user, conn.password)
+    
 }
 
 function getConnection(connName) {
-    return  connections.filter(item => item.name == connName)[0]
-    
+  return  connections.find(item => item.name == connName)
 }
+
 
 function reconnect(connName) {
     let conn = config.filter(item => item.name == connName ) [0]
@@ -47,7 +61,7 @@ function reconnect(connName) {
     return connections
 }
 
-function disconnect(connName) {
+async function disconnect(connName) {
     connections = connections.map(item => {
         if (item.name == connName) {
             item.connection = null
@@ -56,7 +70,10 @@ function disconnect(connName) {
         }
         return item
     })
-    return connections
+    const conn = await Connections.findOne({where : {name : connName}})
+    conn.status = "DISCONNECTED"
+    conn.save()
+    return Connections.findAll()
 }
 
 function checkConnections() {
@@ -99,8 +116,8 @@ function rsToJson(resultSet) {
     return js
 }
 
-function testConnection(connConfig) {
-    connection = connect(connConfig.connectionString, connConfig.user, connConfig.password)
+function testConnection(conn) {
+    connection = connect(conn)
     return connection
 }
 
@@ -113,7 +130,7 @@ function createConnection(connConfig) {
     return connections
 }
 
-function execQuery(connName, query, limit, batchSize) {
+async function execQuery(connName, query, limit, batchSize) {
   queries = query.split(";").filter(item => item.trim() != "")
   connection = getConnection(connName).connection
   return queries.map(query => {

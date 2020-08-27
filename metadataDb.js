@@ -7,7 +7,7 @@ const { text } = require('body-parser');
 
 
 const sequelize = new Sequelize(
-  'postgres://a9s50a6be6d67c73303d0064279911a9ab9220fce1e:a9sc4217dba55465098c455dd4603a6c643ffdb329a@193.148.161.187:49251/pgd459eee',
+  'postgres://postgres:a6HdM3a1gkehjzMi@35.234.66.49:5432/superbase',
   {
     pool: {
       max: 5,
@@ -18,6 +18,17 @@ const sequelize = new Sequelize(
   }
 )
 
+const Connections = sequelize.define('connections', {
+  connectionid : { type: Sequelize.INTEGER, autoIncrement: true, primaryKey: true},
+  name : Sequelize.STRING,
+  connectionString : Sequelize.STRING,
+  user : Sequelize.STRING,
+  password : Sequelize.STRING,
+  status : Sequelize.STRING,
+  lastConnectDate : Sequelize.DATE,
+  disconnectedManually : Sequelize.STRING,
+  connection : Sequelize.BLOB,
+})
 
 const Jobs = sequelize.define('jobs', {
   jobid: { type: Sequelize.INTEGER, autoIncrement: true, primaryKey: true},
@@ -76,7 +87,6 @@ const seqsync = sequelize.sync({force : true})
   ])
   Jobs.bulkCreate([
     {
-      jobid : 1,
       name : "Text job 1",
       pattern : "* * * * *",
       createdt : new Date,
@@ -86,7 +96,6 @@ const seqsync = sequelize.sync({force : true})
       folderId : 1,
     },
     {
-      jobid : 2,
       name : "Text job 2",
       pattern : "* * * * *",
       createdt : new Date,
@@ -96,17 +105,33 @@ const seqsync = sequelize.sync({force : true})
       folderId : 1,
     },
   ])
+  Connections.bulkCreate([
+    {
+      name: "MySQL",
+      connectionString: "jdbc:mysql://@193.148.161.117",
+      user: "root",
+      password: "s6jD]D123bv6pO7"
+  },
+  {
+      connectionString: "jdbc:sqlserver://193.148.161.117:1433",
+      user: "sa",
+      password: "A%sfvf343?!",
+      name: "MS SQL"
+  },
+  ])
 })
-
 
 deasync.loopWhile(() => {
   return !seqsync.isFulfilled()
 })
+
 
 module.exports = {
   Jobs,
   JobsHistory,
   sequelize,
   JobsFolders,
+  Connections,
+  Sequelize
 }
 

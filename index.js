@@ -17,7 +17,7 @@ let metadataCatalog = require("./connections").metadataCatalog
 let metadataObject = require("./connections").getMetadataObject
 let ProcessResultSet = require("./connections").ProcessResultSet
 let setDefaultCatalog = require("./connections").setDefaultCatalog
-
+const {Connections} = require('./metadataDb')
 
 
 app.use( bodyParser.json()); 
@@ -29,9 +29,9 @@ require('./jobRunner')(app);
 
  
 
-app.post('/sql', (req, res) => {
+app.post('/sql', async (req, res) => {
     try {
-        result = execQuery(req.body.database, req.body.query, parseInt(req.body.limit), parseInt(req.body.batchSize))
+        result = await execQuery(req.body.database, req.body.query, parseInt(req.body.limit), parseInt(req.body.batchSize))
         res.send(result)
     } catch (error) {
         res.status(400)
@@ -74,8 +74,8 @@ app.get('/', (req, res) => {
     res.send('Use POST request. Query example {"query" : "select 1" }')
 })
 
-app.get('/connections', (req, res) => {
-    res.send(connections)
+app.get('/connections', async (req, res) => {
+    res.send(await Connections.findAll({ attributes: { exclude: ['password'] } }))
 })
 
 app.get('/connections/reconnect/:connection', (req, res) => {
@@ -83,8 +83,8 @@ app.get('/connections/reconnect/:connection', (req, res) => {
     res.send("success")
 })
 
-app.get('/connections/disconnect/:connection', (req, res) => {
-    connections = disconnect(req.params.connection)
+app.get('/connections/disconnect/:connection', async (req, res) => {
+    connections = await disconnect(req.params.connection)
     res.send("success")
 })
 
